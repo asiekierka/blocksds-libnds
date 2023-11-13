@@ -34,8 +34,11 @@ typedef enum {
     RUMBLE_TYPE_SC_RUMBLE   ///< Rumble included with some SuperCard models
 } RUMBLE_TYPE;
 
-/// Initializes any detected supported rumble cart.
+/// Tries to detect and initialize any supported rumble cart.
 void rumbleInit(void);
+
+/// Enable the rumble functionality in Slot-2, if necessary.
+void rumbleEnable(void);
 
 /// Returns the type of the detected rumble cart.
 ///
@@ -43,6 +46,8 @@ void rumbleInit(void);
 RUMBLE_TYPE rumbleGetType(void);
 
 /// Forces a specific rumble cart type.
+///
+/// Enabling with rumbleEnable() may be required.
 ///
 /// If the cartridge isn't actually present, this won't work.
 ///

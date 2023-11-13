@@ -5,7 +5,9 @@
 // Copyright (C) 2005 Dave Murphy (WinterMute)
 // Copyright (C) 2005 Mike Parks (BigRedPimp)
 // Copyright (c) 2023 Antonio Niño Díaz
+// Copyright (c) 2023 Adrian Siekierka
 
+#include <string.h>
 #include <nds/arm9/rumble.h>
 #include <nds/memory.h>
 #include <nds/ndstypes.h>
@@ -55,8 +57,7 @@ static bool supercard_rumble_detected(void)
     if (GBA_HEADER.is96h != 0x96)
         return false;
 
-    if ((GBA_HEADER.gamecode[0] != 'P') || (GBA_HEADER.gamecode[1] != 'A') ||
-        (GBA_HEADER.gamecode[2] != 'S') || (GBA_HEADER.gamecode[3] != 'S'))
+    if (memcpy(GBA_HEADER.gamecode, "PASS", 4))
         return false;
 
     // In rumble mode, all the GBA bus is mapped to the same register. Bit 1
@@ -94,13 +95,13 @@ void rumbleInit(void)
         return;
     }
 
-    // First, check for 0x96 to see if it's a GBA game
+    // Is the cartridge a GBA game?
     if (GBA_HEADER.is96h == 0x96)
     {
-        // if it is a game, we check the game code
-        // to see if it is warioware twisted
-        if ((GBA_HEADER.gamecode[0] == 'R') && (GBA_HEADER.gamecode[1] == 'Z')
-            && (GBA_HEADER.gamecode[2] == 'W') && (GBA_HEADER.gamecode[3] == 'E'))
+        // If so, check whether the game is one of the following:
+        // - WarioWare! Twisted (RZWx)
+        // - Drill Dozer (V49x)
+        if (!memcpy(GBA_HEADER.gamecode, "RZW", 3) || !memcpy(GBA_HEADER.gamecode, "V49", 3))
         {
             rumbleType = RUMBLE_TYPE_GBA;
             WARIOWARE_ENABLE = 8;
@@ -108,12 +109,21 @@ void rumbleInit(void)
     }
     else
     {
+        // Try to detect a DS Rumble Pak.
         for (int i = 0; i < 0x1000; i++)
         {
             if (GBA_BUS[i] != (i & 0xFFFD))
                 return;
         }
         rumbleType = RUMBLE_TYPE_PAK;
+    }
+}
+
+void rumbleEnable(void)
+{
+    if (rumbleType == RUMBLE_TYPE_SC_RUMBLE)
+    {
+        supercard_set_mode(SC_ENABLE_RUMBLE);
     }
 }
 
@@ -134,7 +144,7 @@ void setRumble(bool position)
     {
         WARIOWARE_PAK = position ? 8 : 0;
     }
-    else if (rumbleType == RUMBLE_TYPE_PAK)
+    else if (rumbleType == RUMBLE_TYPE_PAK || rumbleType == RUMBLE_TYPE_SC_RUMBLE)
     {
         RUMBLE_PAK = position ? 2 : 0;
     }
@@ -142,9 +152,5 @@ void setRumble(bool position)
     {
         // TODO: Untested.
         RUMBLE_PAK = position ? 256 : 0;
-    }
-    else if (rumbleType == RUMBLE_TYPE_SC_RUMBLE)
-    {
-        GBA_BUS[0] = position ? BIT(1) : 0;
     }
 }
